@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-    Discord Battlemetrics Ban Bot
+    Discord Bot Battlemetrics Ban Notifier
 
     Author: Alexemanuelol@GitHub
 
@@ -51,7 +51,7 @@ class BanInfo(Enum):
     SERVER          = 5
     ADMIN_NAME      = 6
 
-class DiscordBattlemetricsBanBot(discord.Client):
+class DiscordBotBattlemetricsBanNotifier(discord.Client):
     """ Discord Ban Bot """
     def __init__(self, **options):
         """ Init. """
@@ -201,5 +201,5 @@ def config_check():
 
 if __name__ == "__main__":
     config_check()
-    bot = DiscordBattlemetricsBanBot()
+    bot = DiscordBotBattlemetricsBanNotifier()
     bot.run(DC_TOKEN)

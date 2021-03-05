@@ -1,4 +1,4 @@
-# Discord Battlemetrics Ban Bot
+# Discord Bot Battlemetrics Ban Notifier
 
 A bot that uses the Battlemetrics API to poll information about recently banned players and updates
 a discord servers 'wall of shame' text channel automatically whenever it detect new bans.
