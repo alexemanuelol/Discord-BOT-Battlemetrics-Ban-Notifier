@@ -15,6 +15,7 @@
 """
 # import neccesary modules
 import configparser
+from lib2to3.pgen2.token import NOTEQUAL
 import discord
 import json
 import requests
@@ -46,10 +47,11 @@ class BanInfo(Enum):
     PLAYER_NAME     = 0
     STEAM_ID        = 1
     REASON          = 2
-    TIME_BANNED     = 3
-    TIME_UNBANNED   = 4
-    SERVER          = 5
-    ADMIN_NAME      = 6
+    NOTE            = 3
+    TIME_BANNED     = 4
+    TIME_UNBANNED   = 5
+    SERVER          = 6
+    ADMIN_NAME      = 7
 
 class squadBanNotifier(discord.Client):
     """ Discord Ban Bot """
@@ -144,6 +146,7 @@ class squadBanNotifier(discord.Client):
         embedVar.add_field(name="PLAYER NAME", value=ban[BanInfo.PLAYER_NAME.value], inline=False)
         embedVar.add_field(name="STEAMID", value=ban[BanInfo.STEAM_ID.value], inline=False)
         embedVar.add_field(name="REASON", value=ban[BanInfo.REASON.value], inline=False)
+        embedVar.add_field(name="NOTE", value=ban[BanInfo.NOTE.value], inline=False)
         embedVar.add_field(name="DATE", value=ban[BanInfo.TIME_BANNED.value], inline=False)
         embedVar.add_field(name="EXPIRES", value=ban[BanInfo.TIME_UNBANNED.value], inline=False)
         embedVar.add_field(name="SERVER", value=ban[BanInfo.SERVER.value], inline=False)
@@ -174,19 +177,24 @@ def get_banlist(url, headers):
             tempServer[include["id"]] = include["attributes"]["name"]
         elif include["type"] == "user": #list of admin names
             tempBanner[include["id"]] = include["attributes"]["nickname"]
-    playerNames, steamIds, banReasons, timeBanned, timeUnbanned, server, banner = ([] for i in range(7))
+    playerNames, steamIds, banReasons, note, timeBanned, timeUnbanned, server, banner = ([] for i in range(8))
     for ban in banList["data"]: #fill all the fields for the embed
-        playerNames.append(ban["meta"]["player"])
+        try:
+            playerNames.append(ban["meta"]["player"])
+        except Exception as e:
+            print("Unknown Player Name",e)
+            playerNames.append("Unknown Player")
         steamIds.append(ban["attributes"]["identifiers"][0]["identifier"])
         banReasons.append(ban["attributes"]["reason"].replace(" ({{duration}} ban) - Expires in {{timeLeft}}.", ""))
+        note.append(ban["attributes"]["note"])
         timeBanned.append(ban["attributes"]["timestamp"].replace("T", " ")[:-5])
         expires = ban["attributes"]["expires"]
         timeUnbanned.append(expires.replace("T", " ")[:-5] if expires != None else "Indefinitely")
         server.append(tempServer[ban["relationships"]["server"]["data"]["id"]])
         banner.append(tempBanner[ban["relationships"]["user"]["data"]["id"]])
     returnList = []
-    for l in list(zip(playerNames, steamIds, banReasons, timeBanned, timeUnbanned, server, banner)):
-        returnList.append(dict(zip([0,1,2,3,4,5,6], l)))
+    for l in list(zip(playerNames, steamIds, banReasons, note, timeBanned, timeUnbanned, server, banner)):
+        returnList.append(dict(zip([0,1,2,3,4,5,6,7], l)))
     return returnList
 
 
