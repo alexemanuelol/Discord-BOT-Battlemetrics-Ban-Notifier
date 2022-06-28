@@ -50,7 +50,7 @@ At this time, this bot has only been tested with Squad. It should work for other
 
 ## Contact
 
-Message me on discord at LukeG01#7531 with questions or concerns.
+Message me on dis cord at LukeG01 number:7531 with questions or concerns.
 
 ## Future Plans
 
