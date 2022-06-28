@@ -58,9 +58,11 @@ class PlayerInfo(Enum):
     PLAYER_NAME     = 0
     STEAM_ID        = 1
     BAN1            = 2
-    BAN2            = 3
-    NOTES           = 4
-    BMLINK          = 5
+    BAN1_EXP        = 3
+    BAN2            = 4
+    BAN2_EXP        = 5
+    NOTES           = 6
+    BMLINK          = 7
 
 
 class squadBanNotifier(discord.Client):
@@ -94,15 +96,18 @@ class squadBanNotifier(discord.Client):
                 print("Running manual poll")
                 await message.author.send("Manually pulled ban list")
                 self.update()
+
             elif command == "LASTBAN": #command DMs the user that executes the command the last ban
                 print("Pulling last ban")
                 banList = get_banlist(BANLISTURL, HEADERS)
                 if banList != []:
                     await message.author.send(embed=self.create_embed_of_ban(banList[0]))
+
             elif command == "HELP": #command DMs the bot commands to the user that executes the command
                 print("Messaging help information")
                 await message.author.send(embed=self.create_help_embed())
-            elif "USER" in command:
+
+            elif "USER" in command: #get users ban information from battlemetrics with their steamid
                 try:
                     steamId = messageUpper[len("USER  "):]
                     playerId = get_playerID(steamId, HEADERS)
@@ -231,8 +236,30 @@ def get_playerID(steamID, headers):
         playerID = playerInfo["data"]["id"]
     return playerID
 
+def create_player_embed(id, url, headers):
+    card = make_playercard(url, headers)
+ """ Creates an embed of a ban. """
+    embedVar = discord.Embed(title="Player Information", color=0x00ff00)
+    embedVar.add_field(name="PLAYER NAME", value=card[PlayerInfo.PLAYER_NAME.value], inline=False)
+    embedVar.add_field(name="STEAMID", value=card[PlayerInfo.STEAM_ID.value], inline=False)
+    embedVar.add_field(name="Ban 1 Reason", value=card[PlayerInfo.BAN1.value], inline=False)
+    embedVar.add_field(name="Ban 1 Expires:", value=card[PlayerInfo.BAN1_EXP.value], inline=False)
+    embedVar.add_field(name="Ban 2 Reason", value=card[PlayerInfo.BAN2.value], inline=False)
+    embedVar.add_field(name="Ban 2 Expires", value=card[PlayerInfo.BAN2_EXP.value], inline=False)
+    embedVar.add_field(name="Player Notes", value=card[PlayerInfo.SERVER.value], inline=False)
+    embedVar.add_field(name="Battlemetrics Link", value=card["https://www.battlemetrics.com/rcon/players/281061654"+id], inline=False)
+    return embedVar    
+
+
 def make_playercard(url, headers):
-    
+    playerNames, steamIds, banReasons, note, server, banner = ([] for i in range(8))
+     try:
+            playerNames.append(ban["meta"]["player"])
+        except Exception as e:
+            print("Unknown Player Name",e)
+            playerNames.append("Unknown Player")
+        steamIds.append(ban["attributes"]["identifiers"][0]["identifier"])
+        banReasons.append(ban["attributes"]["reason"].replace(" ({{duration}} ban) - Expires in {{timeLeft}}.", ""))
     
 def config_check():
     """ Verify that config is set. """
