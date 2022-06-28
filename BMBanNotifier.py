@@ -40,7 +40,8 @@ BM_BANLIST_ID = config["Battlemetrics"]["banListId"] #battlemetrics ban list id
 BM_POLLING_INTERVAL = int(config["Battlemetrics"]["pollingInterval"]) #how often the api is polled (default 10 minutes)
 
 HEADERS = {"Authorization" : "Bearer " + BM_TOKEN}
-URL = "https://api.battlemetrics.com/bans?filter[banList]=" + BM_BANLIST_ID + "&include=user,server"
+BANLISTURL = "https://api.battlemetrics.com/bans?filter[banList]=" + BM_BANLIST_ID + "&include=user,server"
+
 
 """Define class used for storing ban information"""
 class BanInfo(Enum):
@@ -52,6 +53,15 @@ class BanInfo(Enum):
     TIME_UNBANNED   = 5
     SERVER          = 6
     ADMIN_NAME      = 7
+
+class PlayerInfo(Enum):
+    PLAYER_NAME     = 0
+    STEAM_ID        = 1
+    BAN1            = 2
+    BAN2            = 3
+    NOTES           = 4
+    BMLINK          = 5
+
 
 class squadBanNotifier(discord.Client):
     """ Discord Ban Bot """
@@ -86,12 +96,22 @@ class squadBanNotifier(discord.Client):
                 self.update()
             elif command == "LASTBAN": #command DMs the user that executes the command the last ban
                 print("Pulling last ban")
-                banList = get_banlist(URL, HEADERS)
+                banList = get_banlist(BANLISTURL, HEADERS)
                 if banList != []:
                     await message.author.send(embed=self.create_embed_of_ban(banList[0]))
             elif command == "HELP": #command DMs the bot commands to the user that executes the command
                 print("Messaging help information")
                 await message.author.send(embed=self.create_help_embed())
+            elif "USER" in command:
+                try:
+                    steamId = messageUpper[len("USER  "):]
+                    playerId = get_playerID(steamId, HEADERS)
+                    playerInfoURL = "https://api.battlemetrics.com/bans?filter[player]=" + playerId + "&include=user,server"
+                    await message.author.send(embed=self.create_player_embed)
+                except Exception as e:
+                    print(e)
+                    return[] 
+                print("pulling user files for:", steamId)   
 
     def polling_thread(self, event):
         """ Polling thread that runs every UPDATE_TIMER second """
@@ -101,8 +121,8 @@ class squadBanNotifier(discord.Client):
 
     def update(self):
         """ Poll from Battlemetrics API and if there is new data, display it in the discord text channel. """
-        print("Polling from Battlemetrics API...\nURL: " + str(URL))
-        banList = get_banlist(URL, HEADERS)
+        print("Polling from Battlemetrics API...\nURL: " + str(BANLISTURL))
+        banList = get_banlist(BANLISTURL, HEADERS)
         if banList: # If poll was successful
             print("Poll was successful.")
             diff = self.get_banlist_difference(banList)
@@ -198,6 +218,22 @@ def get_banlist(url, headers):
     return returnList
 
 
+def get_playerID(steamID, headers):
+    url = "https://api.battlemetrics.com/players?filter[search]=" + steamID
+    try:
+        response = requests.get(url, headers=headers) 
+    except Exception as e:
+        print(e)
+        return []
+
+    playerInfo = response.json()
+    if playerInfo["data"]["type"] == "player":
+        playerID = playerInfo["data"]["id"]
+    return playerID
+
+def make_playercard(url, headers):
+    
+    
 def config_check():
     """ Verify that config is set. """
     cfg = config["General"]["prefix"]
