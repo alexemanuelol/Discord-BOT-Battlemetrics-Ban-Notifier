@@ -1,4 +1,4 @@
-# Discord Bot Squad Ban Notifier
+# Discord Bot Battlemetrics Ban Notifier
 
 modified by lukeg3
 
