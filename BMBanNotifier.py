@@ -110,9 +110,11 @@ class squadBanNotifier(discord.Client):
             elif "USER" in command: #get users ban information from battlemetrics with their steamid
                 try:
                     steamId = messageUpper[len("USER  "):]
+                    print("Pulling playerid")
                     playerId = get_playerID(steamId, HEADERS)
                     playerInfoURL = "https://api.battlemetrics.com/bans?filter[player]=" + playerId + "&include=user,server"
-                    await message.author.send(embed=self.create_player_embed)
+                    print("Making user embed to channel")
+                    await message.author.send(embed=self.create_player_embed(self, playerId, playerInfoURL, HEADERS))
                 except Exception as e:
                     print(e)
                     return[] 
@@ -225,20 +227,23 @@ def get_banlist(url, headers):
 
 def get_playerID(steamID, headers):
     url = "https://api.battlemetrics.com/players?filter[search]=" + steamID
+    print("Pulling player info from BM") #debug message
     try:
         response = requests.get(url, headers=headers) 
     except Exception as e:
-        print(e)
+        print("Exception:", e)
         return []
-
     playerInfo = response.json()
-    if playerInfo["data"]["type"] == "player":
-        playerID = playerInfo["data"]["id"]
+    playerID = None
+    for player in playerInfo["data"]:
+        playerID = player["id"]
+    if playerID==None:
+        playerID = "Unknown Player"          
+    print("Player ID:", playerID)
     return playerID
 
-def create_player_embed(id, url, headers):
-    card = make_playercard(url, headers)
- """ Creates an embed of a ban. """
+def create_player_embed(self, id, url, headers):
+    card = make_playercard(self, id, url, headers)
     embedVar = discord.Embed(title="Player Information", color=0x00ff00)
     embedVar.add_field(name="PLAYER NAME", value=card[PlayerInfo.PLAYER_NAME.value], inline=False)
     embedVar.add_field(name="STEAMID", value=card[PlayerInfo.STEAM_ID.value], inline=False)
@@ -247,19 +252,35 @@ def create_player_embed(id, url, headers):
     embedVar.add_field(name="Ban 2 Reason", value=card[PlayerInfo.BAN2.value], inline=False)
     embedVar.add_field(name="Ban 2 Expires", value=card[PlayerInfo.BAN2_EXP.value], inline=False)
     embedVar.add_field(name="Player Notes", value=card[PlayerInfo.SERVER.value], inline=False)
-    embedVar.add_field(name="Battlemetrics Link", value=card["https://www.battlemetrics.com/rcon/players/281061654"+id], inline=False)
+    embedVar.add_field(name="Battlemetrics Link", value=card["https://www.battlemetrics.com/rcon/players/"+id], inline=False)
     return embedVar    
 
 
-def make_playercard(url, headers):
-    playerNames, steamIds, banReasons, note, server, banner = ([] for i in range(8))
-     try:
-            playerNames.append(ban["meta"]["player"])
-        except Exception as e:
-            print("Unknown Player Name",e)
-            playerNames.append("Unknown Player")
-        steamIds.append(ban["attributes"]["identifiers"][0]["identifier"])
-        banReasons.append(ban["attributes"]["reason"].replace(" ({{duration}} ban) - Expires in {{timeLeft}}.", ""))
+def make_playercard(self, id, url, headers):
+    try:
+        response = requests.get(url, headers=headers) 
+    except Exception as e:
+        print(e)
+        return []
+    card = PlayerInfo()
+    playerNames, steamIds, ban1, ban1r, ban2, ban2r, notes, bmurl = ([] for i in range(8))
+    try:
+        playerNames.append(card["meta"]["player"])
+    except Exception as e:
+        print("Unknown Player Name",e)
+        playerNames.append("Unknown Player")
+    steamIds.append(card["attributes"]["identifiers"][0]["identifier"])
+    ban1.append(card["attributes"]["reason"].replace(" ({{duration}} ban) - Expires in {{timeLeft}}.", ""))
+    ban1r.append()
+    ban2.append()
+    ban2r.append()
+    notes.append()
+    bmurl.append()
+    returnList = []
+    for l in list(zip(playerNames, steamIds, ban1, ban1r, ban2, ban2r, notes, bmurl)):
+        returnList.append(dict(zip([0,1,2,3,4,5,6,7], l)))
+    return returnList
+    
     
 def config_check():
     """ Verify that config is set. """
