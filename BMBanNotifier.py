@@ -16,6 +16,7 @@
 # import neccesary modules
 import configparser
 from lib2to3.pgen2.token import NOTEQUAL
+from pickle import NONE
 import discord
 import json
 import requests
@@ -112,13 +113,20 @@ class squadBanNotifier(discord.Client):
                     steamId = messageUpper[len("USER  "):]
                     print("Pulling playerid")
                     playerId = get_playerID(steamId, HEADERS)
-                    playerInfoURL = "https://api.battlemetrics.com/bans?filter[player]=" + playerId + "&include=user,server"
-                    print("Making user embed to channel")
-                    await message.author.send(embed=self.create_player_embed(self, playerId, playerInfoURL, HEADERS))
+                    if playerId != None:
+                        if len(playerId) == 9:
+                            playerInfoURL = "https://api.battlemetrics.com/bans?filter[player]=" + playerId + "&include=user,server"
+                            print("Making user embed to channel")
+                            await message.channel.send(embed=self.create_player_embed(self, playerId, playerInfoURL, HEADERS))
+                        else:
+                            print("PlayerID not of correct length")
+                            await message.channel.send("No User Profile Found")
+                    else:
+                        await message.channel.send("No User Profile Found")
                 except Exception as e:
-                    print(e)
+                    print("User command exception",e)
                     return[] 
-                print("pulling user files for:", steamId)   
+                print("user files polled")   
 
     def polling_thread(self, event):
         """ Polling thread that runs every UPDATE_TIMER second """
@@ -173,7 +181,10 @@ class squadBanNotifier(discord.Client):
         embedVar.add_field(name="PLAYER NAME", value=ban[BanInfo.PLAYER_NAME.value], inline=False)
         embedVar.add_field(name="STEAMID", value=ban[BanInfo.STEAM_ID.value], inline=False)
         embedVar.add_field(name="REASON", value=ban[BanInfo.REASON.value], inline=False)
-        embedVar.add_field(name="NOTE", value=ban[BanInfo.NOTE.value], inline=False)
+        if BanInfo.NOTE.value != None:
+            embedVar.add_field(name="NOTE", value=ban[BanInfo.NOTE.value], inline=False)
+        else:
+            embedVar.add_field(name="NOTE", value="No ban notes", inline=False)
         embedVar.add_field(name="DATE", value=ban[BanInfo.TIME_BANNED.value], inline=False)
         embedVar.add_field(name="EXPIRES", value=ban[BanInfo.TIME_UNBANNED.value], inline=False)
         embedVar.add_field(name="SERVER", value=ban[BanInfo.SERVER.value], inline=False)
@@ -192,7 +203,7 @@ def get_banlist(url, headers):
     try:
         response = requests.get(url, headers=headers) 
     except Exception as e:
-        print(e)
+        print("get_banlist exception",e)
         return []
 
     banList = response.json()
@@ -231,7 +242,7 @@ def get_playerID(steamID, headers):
     try:
         response = requests.get(url, headers=headers) 
     except Exception as e:
-        print("Exception:", e)
+        print("get_playerID exception", e)
         return []
     playerInfo = response.json()
     playerID = None
@@ -260,17 +271,17 @@ def make_playercard(self, id, url, headers):
     try:
         response = requests.get(url, headers=headers) 
     except Exception as e:
-        print(e)
+        print("make_playercard exception",e)
         return []
     card = PlayerInfo()
     playerNames, steamIds, ban1, ban1r, ban2, ban2r, notes, bmurl = ([] for i in range(8))
     try:
-        playerNames.append(card["meta"]["player"])
+        playerNames.append(card["data"]["meta"]["player"])
     except Exception as e:
         print("Unknown Player Name",e)
         playerNames.append("Unknown Player")
-    steamIds.append(card["attributes"]["identifiers"][0]["identifier"])
-    ban1.append(card["attributes"]["reason"].replace(" ({{duration}} ban) - Expires in {{timeLeft}}.", ""))
+    steamIds.append(card["data"]["attributes"]["identifiers"][0]["identifier"])
+    ban1.append(card["data"]["attributes"]["reason"].replace(" ({{duration}} ban) - Expires in {{timeLeft}}.", ""))
     ban1r.append()
     ban2.append()
     ban2r.append()
