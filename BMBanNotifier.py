@@ -58,12 +58,10 @@ class BanInfo(Enum):
 class PlayerInfo(Enum):
     PLAYER_NAME     = 0
     STEAM_ID        = 1
-    BAN1            = 2
-    BAN1_EXP        = 3
-    BAN2            = 4
-    BAN2_EXP        = 5
-    NOTES           = 6
-    BMLINK          = 7
+    NUM_ACTIVE      = 2
+    NUM_EXPIRED     = 3
+    MOST_RECENT     = 4
+    BMLINK          = 5
 
 
 class squadBanNotifier(discord.Client):
@@ -194,6 +192,50 @@ class squadBanNotifier(discord.Client):
     def send_embed_to_text_channel(self, embedVar):
         """ Send embed to text channel. """
         self.loop.create_task(self.get_channel(DC_TEXT_CHANNEL_ID).send(embed=embedVar))
+    
+    def create_player_embed(junk, self, id, url, headers):
+        card = self.make_playercard(self, id, url, headers)
+        embedVar = discord.Embed(title="Player Information", color=0x00ff00)
+        embedVar.add_field(name="PLAYER NAME", value=card[PlayerInfo.PLAYER_NAME.value], inline=False)
+        embedVar.add_field(name="STEAMID", value=card[PlayerInfo.STEAM_ID.value], inline=False)
+        embedVar.add_field(name="Number of active bans:", value=card[PlayerInfo.NUM_ACTIVE.value], inline=False)
+        embedVar.add_field(name="Number of expired bans:", value=card[PlayerInfo.NUM_EXPIRED.value], inline=False)
+        embedVar.add_field(name="Most recent ban reason", value=card[PlayerInfo.MOST_RECENT.value], inline=False)
+        embedVar.add_field(name="Battlemetrics Link", value=card[PlayerInfo.BMLINK.value], inline=False)
+        return embedVar
+
+    def make_playercard(junk, self, id, url, headers):
+        try:
+            response = requests.get(url, headers=headers) 
+        except Exception as e:
+            print("make_playercard exception",e)
+            return []
+        card = PlayerInfo()
+        playerNames, steamIds, numact, numexp, recent, bmurl = ([] for i in range(6))
+        try:
+            playerNames.append(card["data"]["meta"]["player"])
+        except Exception as e:
+            print("Unknown Player Name",e)
+            playerNames.append("Unknown Player")
+        steamIds.append(card["data"]["attributes"]["identifiers"][0]["identifier"])
+        numact.append(card["meta"]["active"])
+        numexp.append(card["meta"]["expired"])
+        try:
+            if card["data"][0]["type"] == "ban":
+                recent.append(card["data"][0]["attributes"]["reason"])
+            else:
+                recent.append("No recent bans")
+        except Exception as e:
+            print("make_playercard exception2",e)
+            if recent[0] == None:
+                recent.append("No recent bans")
+        bmurl.append("https://www.battlemetrics.com/rcon/players/"+id)
+        returnList = []
+        for l in list(zip(playerNames, steamIds, numact, numexp, recent, bmurl)):
+            returnList.append(dict(zip([0,1,2,3,4,5,6], l)))
+        return returnList
+    
+
 
 
 def get_banlist(url, headers):
@@ -222,7 +264,10 @@ def get_banlist(url, headers):
         except Exception as e:
             print("Unknown Player Name",e)
             playerNames.append("Unknown Player")
-        steamIds.append(ban["attributes"]["identifiers"][0]["identifier"])
+        if ban["attributes"]["identifiers"][0]["type"]=="steamID":
+            steamIds.append(ban["attributes"]["identifiers"][0]["identifier"])
+        else:
+            steamIds.append(ban["attributes"]["identifiers"][1]["identifier"])
         banReasons.append(ban["attributes"]["reason"].replace(" ({{duration}} ban) - Expires in {{timeLeft}}.", ""))
         note.append(ban["attributes"]["note"])
         timeBanned.append(ban["attributes"]["timestamp"].replace("T", " ")[:-5])
@@ -252,45 +297,6 @@ def get_playerID(steamID, headers):
         playerID = "Unknown Player"          
     print("Player ID:", playerID)
     return playerID
-
-def create_player_embed(self, id, url, headers):
-    card = make_playercard(self, id, url, headers)
-    embedVar = discord.Embed(title="Player Information", color=0x00ff00)
-    embedVar.add_field(name="PLAYER NAME", value=card[PlayerInfo.PLAYER_NAME.value], inline=False)
-    embedVar.add_field(name="STEAMID", value=card[PlayerInfo.STEAM_ID.value], inline=False)
-    embedVar.add_field(name="Ban 1 Reason", value=card[PlayerInfo.BAN1.value], inline=False)
-    embedVar.add_field(name="Ban 1 Expires:", value=card[PlayerInfo.BAN1_EXP.value], inline=False)
-    embedVar.add_field(name="Ban 2 Reason", value=card[PlayerInfo.BAN2.value], inline=False)
-    embedVar.add_field(name="Ban 2 Expires", value=card[PlayerInfo.BAN2_EXP.value], inline=False)
-    embedVar.add_field(name="Player Notes", value=card[PlayerInfo.SERVER.value], inline=False)
-    embedVar.add_field(name="Battlemetrics Link", value=card["https://www.battlemetrics.com/rcon/players/"+id], inline=False)
-    return embedVar    
-
-
-def make_playercard(self, id, url, headers):
-    try:
-        response = requests.get(url, headers=headers) 
-    except Exception as e:
-        print("make_playercard exception",e)
-        return []
-    card = PlayerInfo()
-    playerNames, steamIds, ban1, ban1r, ban2, ban2r, notes, bmurl = ([] for i in range(8))
-    try:
-        playerNames.append(card["data"]["meta"]["player"])
-    except Exception as e:
-        print("Unknown Player Name",e)
-        playerNames.append("Unknown Player")
-    steamIds.append(card["data"]["attributes"]["identifiers"][0]["identifier"])
-    ban1.append(card["data"]["attributes"]["reason"].replace(" ({{duration}} ban) - Expires in {{timeLeft}}.", ""))
-    ban1r.append()
-    ban2.append()
-    ban2r.append()
-    notes.append()
-    bmurl.append()
-    returnList = []
-    for l in list(zip(playerNames, steamIds, ban1, ban1r, ban2, ban2r, notes, bmurl)):
-        returnList.append(dict(zip([0,1,2,3,4,5,6,7], l)))
-    return returnList
     
     
 def config_check():
