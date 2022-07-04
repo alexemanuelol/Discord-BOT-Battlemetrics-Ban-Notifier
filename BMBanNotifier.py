@@ -55,13 +55,33 @@ class BanInfo(Enum):
     SERVER          = 6
     ADMIN_NAME      = 7
 
-class PlayerInfo(Enum):
+class PlayerInfo:
     PLAYER_NAME     = 0
     STEAM_ID        = 1
     NUM_ACTIVE      = 2
     NUM_EXPIRED     = 3
     MOST_RECENT     = 4
     BMLINK          = 5
+    def __init__(self, name, sid, na, ne, mr, bm):
+        self.PLAYER_NAME = name
+        self.STEAM_ID = sid
+        self.NUM_ACTIVE = na
+        self.NUM_EXPIRED = ne
+        self.MOST_RECENT = mr
+        self.BMLINK = bm
+    def name(self):
+        return self.PLAYER_NAME
+    def steamID(self):
+        return self.STEAM_ID
+    def numActive(self):
+        return self.NUM_ACTIVE
+    def numExpired(self):
+        return self.NUM_EXPIRED
+    def mostRecent(self):
+        return self.MOST_RECENT
+    def bmLink(self):
+        return self.BMLINK
+
 
 
 class squadBanNotifier(discord.Client):
@@ -115,12 +135,12 @@ class squadBanNotifier(discord.Client):
                         if len(playerId) == 9:
                             playerInfoURL = "https://api.battlemetrics.com/bans?filter[player]=" + playerId + "&include=user,server"
                             print("Making user embed to channel")
-                            await message.channel.send(embed=self.create_player_embed(self, playerId, playerInfoURL, HEADERS))
+                            await message.author.send(embed=self.create_player_embed(self, playerId, playerInfoURL, HEADERS))
                         else:
                             print("PlayerID not of correct length")
-                            await message.channel.send("No User Profile Found")
+                            await message.author.send("No User Profile Found")
                     else:
-                        await message.channel.send("No User Profile Found")
+                        await message.author.send("No User Profile Found")
                 except Exception as e:
                     print("User command exception",e)
                     return[] 
@@ -193,31 +213,33 @@ class squadBanNotifier(discord.Client):
         """ Send embed to text channel. """
         self.loop.create_task(self.get_channel(DC_TEXT_CHANNEL_ID).send(embed=embedVar))
     
-    def create_player_embed(junk, self, id, url, headers):
+    def create_player_embed(trash,self, id, url, headers):
         card = self.make_playercard(self, id, url, headers)
         embedVar = discord.Embed(title="Player Information", color=0x00ff00)
-        embedVar.add_field(name="PLAYER NAME", value=card[PlayerInfo.PLAYER_NAME.value], inline=False)
-        embedVar.add_field(name="STEAMID", value=card[PlayerInfo.STEAM_ID.value], inline=False)
-        embedVar.add_field(name="Number of active bans:", value=card[PlayerInfo.NUM_ACTIVE.value], inline=False)
-        embedVar.add_field(name="Number of expired bans:", value=card[PlayerInfo.NUM_EXPIRED.value], inline=False)
-        embedVar.add_field(name="Most recent ban reason", value=card[PlayerInfo.MOST_RECENT.value], inline=False)
-        embedVar.add_field(name="Battlemetrics Link", value=card[PlayerInfo.BMLINK.value], inline=False)
+        embedVar.add_field(name="PLAYER NAME", value=PlayerInfo.name(card), inline=False)
+        embedVar.add_field(name="STEAMID", value=PlayerInfo.steamID(card), inline=False)
+        embedVar.add_field(name="Number of active bans:", value=PlayerInfo.numActive(card), inline=False)
+        embedVar.add_field(name="Number of expired bans:", value=PlayerInfo.numExpired(card), inline=False)
+        embedVar.add_field(name="Most recent ban reason", value=PlayerInfo.mostRecent(card), inline=False)
+        embedVar.add_field(name="Battlemetrics Link", value=PlayerInfo.bmLink(card), inline=False)
         return embedVar
 
-    def make_playercard(junk, self, id, url, headers):
+    def make_playercard(trash, self, id, url, headers):
         try:
             response = requests.get(url, headers=headers) 
         except Exception as e:
             print("make_playercard exception",e)
             return []
-        card = PlayerInfo()
+        card = response.json()
         playerNames, steamIds, numact, numexp, recent, bmurl = ([] for i in range(6))
+        
         try:
-            playerNames.append(card["data"]["meta"]["player"])
+            playerNames.append(card["data"][0]["meta"]["player"])
         except Exception as e:
             print("Unknown Player Name",e)
             playerNames.append("Unknown Player")
-        steamIds.append(card["data"]["attributes"]["identifiers"][0]["identifier"])
+        steamIds.append(card["data"][0]["attributes"]["identifiers"][0]["identifier"]) #not working
+        print(steamIds)
         numact.append(card["meta"]["active"])
         numexp.append(card["meta"]["expired"])
         try:
@@ -230,9 +252,7 @@ class squadBanNotifier(discord.Client):
             if recent[0] == None:
                 recent.append("No recent bans")
         bmurl.append("https://www.battlemetrics.com/rcon/players/"+id)
-        returnList = []
-        for l in list(zip(playerNames, steamIds, numact, numexp, recent, bmurl)):
-            returnList.append(dict(zip([0,1,2,3,4,5,6], l)))
+        returnList = PlayerInfo(playerNames[0],steamIds[0],numact[0],numexp[0], recent[0], bmurl[0])
         return returnList
     
 
