@@ -132,25 +132,26 @@ class squadBanNotifier(discord.Client):
 
             elif "USER" in command: #get users ban information from battlemetrics with their steamid
                 try:
-                    steamId = command.strip(" USER")
-                    print(steamId)
-                    
-                    print("Pulling playerid")
-                    playerId = get_playerID(steamId, HEADERS)
-                    if playerId != None:
-                        if len(playerId) == 9:
-                            playerInfoURL = "https://api.battlemetrics.com/bans?filter[player]=" + playerId + "&include=user,server"
-                            print("Making user embed to channel")
-                            await message.channel.send(embed=self.create_player_embed(self, playerId, playerInfoURL, HEADERS))
+                    steamId = command.strip(" USER") #get just the steamid from the command
+                    if len(steamId) != 17:
+                        print("Invalid SteamID")
+                        await message.author.send("Invalid SteamID")
+                    else: 
+                        print("Pulling playerid")
+                        playerId = get_playerID(steamId, HEADERS)
+                        if playerId != None:
+                            if len(playerId) == 9:
+                                playerInfoURL = "https://api.battlemetrics.com/bans?filter[player]=" + playerId + "&include=user,server"
+                                print("Making user embed to channel")
+                                await message.channel.send(embed=self.create_player_embed(self, playerId, playerInfoURL, HEADERS))
+                            else:
+                                print("PlayerID not of correct length")
+                                await message.author.send("No User Profile Found, check battlemetrics")
                         else:
-                            print("PlayerID not of correct length")
                             await message.author.send("No User Profile Found, check battlemetrics")
-                    else:
-                        await message.author.send("No User Profile Found, check battlemetrics")
                 except Exception as e:
                     print("User command exception",e)
                     return[] 
-                print("user files polled")   
 
     def polling_thread(self, event):
         """ Polling thread that runs every UPDATE_TIMER second """
@@ -220,18 +221,20 @@ class squadBanNotifier(discord.Client):
         self.loop.create_task(self.get_channel(DC_TEXT_CHANNEL_ID).send(embed=embedVar))
     
     def create_player_embed(trash,self, id, url, headers):
+        """Creates embed of a players ban history and information"""
         card = self.make_playercard(self, id, url, headers)
         embedVar = discord.Embed(title="Player Information", color=0x00ff00)
-        embedVar.add_field(name="PLAYER NAME", value=PlayerInfo.name(card), inline=False)
-        embedVar.add_field(name="STEAMID", value=PlayerInfo.steamID(card), inline=False)
+        embedVar.add_field(name="Player Name", value=PlayerInfo.name(card), inline=False)
+        embedVar.add_field(name="SteamID", value=PlayerInfo.steamID(card), inline=False)
         embedVar.add_field(name="Number of active bans:", value=PlayerInfo.numActive(card), inline=False)
         embedVar.add_field(name="Number of expired bans:", value=PlayerInfo.numExpired(card), inline=False)
-        embedVar.add_field(name="Most recent ban reason", value=PlayerInfo.mostRecent(card), inline=False)
-        embedVar.add_field(name="Most recent ban note", value=PlayerInfo.mostRecentNote(card), inline=False)
-        embedVar.add_field(name="Battlemetrics Link", value=PlayerInfo.bmLink(card), inline=False)
+        embedVar.add_field(name="Most recent ban reason:", value=PlayerInfo.mostRecent(card), inline=False)
+        embedVar.add_field(name="Most recent ban note:", value=PlayerInfo.mostRecentNote(card), inline=False)
+        embedVar.add_field(name="Battlemetrics Link:", value=PlayerInfo.bmLink(card), inline=False)
         return embedVar
 
     def make_playercard(trash, self, id, url, headers):
+        """Polls battlemetrics api to get the player information to make the player embed"""
         try:
             response = requests.get(url, headers=headers) 
         except Exception as e:
@@ -239,14 +242,12 @@ class squadBanNotifier(discord.Client):
             return []
         card = response.json()
         playerNames, steamIds, numact, numexp, recent, note, bmurl = ([] for i in range(7))
-        
         try:
             playerNames.append(card["data"][0]["meta"]["player"])
         except Exception as e:
             print("Unknown Player Name",e)
             playerNames.append("Unknown Player")
-        steamIds.append(card["data"][0]["attributes"]["identifiers"][0]["identifier"]) #not working
-        print(steamIds)
+        steamIds.append(card["data"][0]["attributes"]["identifiers"][0]["identifier"])
         numact.append(card["meta"]["active"])
         numexp.append(card["meta"]["expired"])
         try:
