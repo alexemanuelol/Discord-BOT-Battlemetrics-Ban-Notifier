@@ -61,13 +61,15 @@ class PlayerInfo:
     NUM_ACTIVE      = 2
     NUM_EXPIRED     = 3
     MOST_RECENT     = 4
-    BMLINK          = 5
-    def __init__(self, name, sid, na, ne, mr, bm):
+    MOST_RECENT_NOTE = 5
+    BMLINK          = 6
+    def __init__(self, name, sid, na, ne, mr, mrn, bm):
         self.PLAYER_NAME = name
         self.STEAM_ID = sid
         self.NUM_ACTIVE = na
         self.NUM_EXPIRED = ne
         self.MOST_RECENT = mr
+        self.MOST_RECENT_NOTE = mrn
         self.BMLINK = bm
     def name(self):
         return self.PLAYER_NAME
@@ -79,6 +81,8 @@ class PlayerInfo:
         return self.NUM_EXPIRED
     def mostRecent(self):
         return self.MOST_RECENT
+    def mostRecentNote(self):
+        return self.MOST_RECENT_NOTE    
     def bmLink(self):
         return self.BMLINK
 
@@ -128,19 +132,21 @@ class squadBanNotifier(discord.Client):
 
             elif "USER" in command: #get users ban information from battlemetrics with their steamid
                 try:
-                    steamId = messageUpper[len("USER  "):]
+                    steamId = command.strip(" USER")
+                    print(steamId)
+                    
                     print("Pulling playerid")
                     playerId = get_playerID(steamId, HEADERS)
                     if playerId != None:
                         if len(playerId) == 9:
                             playerInfoURL = "https://api.battlemetrics.com/bans?filter[player]=" + playerId + "&include=user,server"
                             print("Making user embed to channel")
-                            await message.author.send(embed=self.create_player_embed(self, playerId, playerInfoURL, HEADERS))
+                            await message.channel.send(embed=self.create_player_embed(self, playerId, playerInfoURL, HEADERS))
                         else:
                             print("PlayerID not of correct length")
-                            await message.author.send("No User Profile Found")
+                            await message.author.send("No User Profile Found, check battlemetrics")
                     else:
-                        await message.author.send("No User Profile Found")
+                        await message.author.send("No User Profile Found, check battlemetrics")
                 except Exception as e:
                     print("User command exception",e)
                     return[] 
@@ -221,6 +227,7 @@ class squadBanNotifier(discord.Client):
         embedVar.add_field(name="Number of active bans:", value=PlayerInfo.numActive(card), inline=False)
         embedVar.add_field(name="Number of expired bans:", value=PlayerInfo.numExpired(card), inline=False)
         embedVar.add_field(name="Most recent ban reason", value=PlayerInfo.mostRecent(card), inline=False)
+        embedVar.add_field(name="Most recent ban note", value=PlayerInfo.mostRecentNote(card), inline=False)
         embedVar.add_field(name="Battlemetrics Link", value=PlayerInfo.bmLink(card), inline=False)
         return embedVar
 
@@ -231,7 +238,7 @@ class squadBanNotifier(discord.Client):
             print("make_playercard exception",e)
             return []
         card = response.json()
-        playerNames, steamIds, numact, numexp, recent, bmurl = ([] for i in range(6))
+        playerNames, steamIds, numact, numexp, recent, note, bmurl = ([] for i in range(7))
         
         try:
             playerNames.append(card["data"][0]["meta"]["player"])
@@ -245,14 +252,21 @@ class squadBanNotifier(discord.Client):
         try:
             if card["data"][0]["type"] == "ban":
                 recent.append(card["data"][0]["attributes"]["reason"])
+                if card["data"][0]["attributes"]["note"] == "":
+                    note.append("No Ban Note")
+                else:
+                    note.append(card["data"][0]["attributes"]["note"])
             else:
                 recent.append("No recent bans")
+                note.append("No Ban Note")
         except Exception as e:
             print("make_playercard exception2",e)
             if recent[0] == None:
                 recent.append("No recent bans")
+            if note[0] == None:
+                note.append("No ban note attached")
         bmurl.append("https://www.battlemetrics.com/rcon/players/"+id)
-        returnList = PlayerInfo(playerNames[0],steamIds[0],numact[0],numexp[0], recent[0], bmurl[0])
+        returnList = PlayerInfo(playerNames[0],steamIds[0],numact[0],numexp[0], recent[0], note[0], bmurl[0])
         return returnList
     
 
