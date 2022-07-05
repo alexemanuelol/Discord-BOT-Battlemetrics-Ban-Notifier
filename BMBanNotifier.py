@@ -247,7 +247,10 @@ class squadBanNotifier(discord.Client):
         except Exception as e:
             print("Unknown Player Name",e)
             playerNames.append("Unknown Player")
-        steamIds.append(card["data"][0]["attributes"]["identifiers"][0]["identifier"])
+        for i in range(10):
+            if card["data"][0]["attributes"]["identifiers"][i]["type"]=="steamID":
+                steamIds.append(card["data"][0]["attributes"]["identifiers"][i]["identifier"])
+                break
         numact.append(card["meta"]["active"])
         numexp.append(card["meta"]["expired"])
         try:
@@ -299,10 +302,10 @@ def get_banlist(url, headers):
         except Exception as e:
             print("Unknown Player Name",e)
             playerNames.append("Unknown Player")
-        if ban["attributes"]["identifiers"][0]["type"]=="steamID":
-            steamIds.append(ban["attributes"]["identifiers"][0]["identifier"])
-        else:
-            steamIds.append(ban["attributes"]["identifiers"][1]["identifier"])
+        for i in range(10):
+            if ban["attributes"]["identifiers"][i]["type"]=="steamID":
+                steamIds.append(ban["attributes"]["identifiers"][i]["identifier"])
+                break
         banReasons.append(ban["attributes"]["reason"].replace(" ({{duration}} ban) - Expires in {{timeLeft}}.", ""))
         note.append(ban["attributes"]["note"])
         timeBanned.append(ban["attributes"]["timestamp"].replace("T", " ")[:-5])
