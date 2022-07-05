@@ -238,7 +238,7 @@ class squadBanNotifier(discord.Client):
         try:
             response = requests.get(url, headers=headers) 
         except Exception as e:
-            print("make_playercard exception",e)
+            print("make_playercard json exception",e)
             return []
         card = response.json()
         playerNames, steamIds, numact, numexp, recent, note, bmurl = ([] for i in range(7))
@@ -264,7 +264,7 @@ class squadBanNotifier(discord.Client):
                 recent.append("No recent bans")
                 note.append("No Ban Note")
         except Exception as e:
-            print("make_playercard exception2",e)
+            print("make_playercard recent ban exception",e)
             if recent[0] == None:
                 recent.append("No recent bans")
             if note[0] == None:
