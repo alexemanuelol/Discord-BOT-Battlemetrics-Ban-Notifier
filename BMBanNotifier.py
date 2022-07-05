@@ -234,7 +234,8 @@ class squadBanNotifier(discord.Client):
         return embedVar
 
     def make_playercard(trash, self, id, url, headers):
-        """Polls battlemetrics api to get the player information to make the player embed"""
+        """Polls battlemetrics api to get the player information 
+        to make the player embed"""
         try:
             response = requests.get(url, headers=headers) 
         except Exception as e:
@@ -285,11 +286,8 @@ def get_banlist(url, headers):
     except Exception as e:
         print("get_banlist exception",e)
         return []
-
     banList = response.json()
-   
     tempServer, tempBanner = dict(), dict()
-    
     for include in banList["included"]:
         if include["type"] == "server": #list of server names
             tempServer[include["id"]] = include["attributes"]["name"]
@@ -320,6 +318,8 @@ def get_banlist(url, headers):
 
 
 def get_playerID(steamID, headers):
+    """Returns the battlemetrics player id number
+    from an api request searching with a players steamID"""
     url = "https://api.battlemetrics.com/players?filter[search]=" + steamID
     print("Pulling player info from BM") #debug message
     try:
